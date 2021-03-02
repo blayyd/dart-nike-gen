@@ -370,9 +370,10 @@ func registerAccount() {
 
 	// create chrome instance
 	opts := append(chromedp.DefaultExecAllocatorOptions[:],
-		chromedp.DisableGPU, chromedp.ProxyServer("http://localhost:8888"), //("http://"+randomProxy.IP+":"+randomProxy.Port),
+		chromedp.DisableGPU, chromedp.ProxyServer("http://"+randomProxy.IP+":"+randomProxy.Port),
 		// Set the headless flag to false to display the browser window
-		chromedp.Flag("headless", true),
+		chromedp.Flag("headless", false),
+		chromedp.Flag("blink-settings", "imagesEnabled=false"),
 		chromedp.UserAgent( /*uarand.GetRandom()*/ "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.182 Safari/537.36"),
 	)
 
@@ -380,6 +381,9 @@ func registerAccount() {
 	defer cancel()
 
 	ctx, cancel = chromedp.NewContext(ctx)
+	defer cancel()
+
+	ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
 	chromedp.ListenTarget(ctx, func(ev interface{}) {
@@ -420,6 +424,8 @@ func registerAccount() {
 		genderPath = `/html/body/div[2]/div[3]/div[5]/form/div[7]/ul/li[2]/span`
 	}
 
+	//ctx = context.WithTimeout(1 * time.Minute)
+
 	// navigate to a page, wait for some time and then exit.
 	err = chromedp.Run(ctx,
 		fetch.Enable().WithHandleAuthRequests(true),
@@ -435,19 +441,18 @@ func registerAccount() {
 		chromedp.Click(genderPath),
 		chromedp.Click(`/html/body/div[2]/div[3]/div[5]/form/div[9]/input`),
 		chromedp.Sleep(5*time.Second),
-
 		chromedp.Navigate(`https://www.nike.com/member/settings`),
 		chromedp.Click(`/html/body/div[3]/div/div[3]/div[1]/div[1]/div/div[2]/div/span`),
 		chromedp.WaitVisible(`/html/body/div[3]/div/div[3]/div[2]/div/div/form/div[2]/div[4]/div/div/div/div[2]/button`), // Add
 		chromedp.Click(`/html/body/div[3]/div/div[3]/div[2]/div/div/form/div[2]/div[4]/div/div/div/div[2]/button`),       // Add
 		chromedp.WaitVisible(`/html/body/div[1]/div[1]/div/div[1]/div/div[10]/form/div[1]/div[1]/div[1]/input`),          // Mobile Number
 	)
-	if err != nil {
+	if err != nil && err != context.Canceled && err != context.DeadlineExceeded {
 		log.Fatal(err)
 	}
 
 	// call api for number and code
-	if provider == 1 {
+	if provider == 1 && err != context.DeadlineExceeded {
 		phoneNumber, phoneCode := orderSmsActivate()
 
 		err = chromedp.Run(ctx,
@@ -499,7 +504,7 @@ func registerAccount() {
 				fmt.Println("Activation cancelled.")
 			}
 		}
-	} else if provider == 2 {
+	} else if provider == 2 && err != context.DeadlineExceeded {
 		phoneNumber := orderRob()
 		phoneCode := codeRob()
 
