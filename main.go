@@ -77,9 +77,6 @@ var smsActivateID string
 var provider int
 var robID string
 
-// var phoneNumber string
-// var phoneCode string
-
 func startUp() {
 	color.Cyan(`▓█████▄  ▄▄▄       ██▀███  ▄▄▄█████▓    ██▓ ▒█████  `)
 	color.Cyan(`▒██▀ ██▌▒████▄    ▓██ ▒ ██▒▓  ██▒ ▓▒   ▓██▒▒██▒  ██▒`)
@@ -106,6 +103,8 @@ func loadConfiguration(file string) Config {
 	jsonParser.Decode(&config)
 	return config
 }
+
+var config Config = loadConfiguration("config.json")
 
 func stringToProxy(line string) (Proxy, error) {
 
@@ -148,7 +147,6 @@ func loadProxy(filePath string) ([]Proxy, error) {
 }
 
 func getSmsActivate(id string) string {
-	config := loadConfiguration("config.json")
 
 	req, err := http.Get("https://sms-activate.ru/stubs/handler_api.php?api_key=" + config.Providers.SmsActivate.APIKey + "&action=getFullSms&id=" + id)
 
@@ -167,7 +165,6 @@ func getSmsActivate(id string) string {
 }
 
 func confirmSmsActivate(id string) {
-	config := loadConfiguration("config.json")
 
 	req, err := http.Get("https://sms-activate.ru/stubs/handler_api.php?api_key=" + config.Providers.SmsActivate.APIKey + "&action=setStatus&status=6&id=" + id)
 
@@ -178,7 +175,6 @@ func confirmSmsActivate(id string) {
 }
 
 func cancelSmsActivate(id string) {
-	config := loadConfiguration("config.json")
 
 	req, err := http.Get("https://sms-activate.ru/stubs/handler_api.php?api_key=" + config.Providers.SmsActivate.APIKey + "&action=setStatus&status=8&id=" + id)
 
@@ -189,7 +185,6 @@ func cancelSmsActivate(id string) {
 }
 
 func orderSmsActivate() (string, string) {
-	config := loadConfiguration("config.json")
 	var code string
 
 	req, err := http.Get("https://sms-activate.ru/stubs/handler_api.php?api_key=" + config.Providers.SmsActivate.APIKey + "&action=getNumber&service=ew&ref=1124276&country=" + config.Providers.SmsActivate.CountryCode)
@@ -221,7 +216,6 @@ func orderSmsActivate() (string, string) {
 }
 
 func orderRob() string {
-	config := loadConfiguration("config.json")
 	var order Order
 
 	var orderJSON = []byte(`{"id": "37", "country_code": "` + config.Providers.SmsDiscount.CountryPrefix + `"}`)
@@ -249,7 +243,6 @@ func orderRob() string {
 }
 
 func codeRob() string {
-	config := loadConfiguration("config.json")
 	var code Active
 
 	req, err := http.NewRequest("GET", "https://sms.discount/api/numbers/active", nil)
@@ -274,7 +267,6 @@ func codeRob() string {
 }
 
 func archiveRob() {
-	config := loadConfiguration("config.json")
 
 	req, err := http.NewRequest("GET", "https://sms.discount/api/numbers/"+robID+"/archive", nil)
 	req.Header.Set("Content-Type", "application/json")
@@ -289,7 +281,6 @@ func archiveRob() {
 }
 
 func successHook(email, password string) {
-	config := loadConfiguration("config.json")
 	webhookJSON := []byte(`{
 			"content": null,
 			"embeds": [
@@ -330,7 +321,6 @@ func successHook(email, password string) {
 }
 
 func registerAccount() {
-	config := loadConfiguration("config.json")
 	rand.Seed(time.Now().Unix())
 
 	// input variables
@@ -374,15 +364,11 @@ func registerAccount() {
 		// Set the headless flag to false to display the browser window
 		chromedp.Flag("headless", false),
 		chromedp.Flag("blink-settings", "imagesEnabled=false"),
-		chromedp.UserAgent( /*uarand.GetRandom()*/ "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.182 Safari/537.36"),
+		chromedp.UserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.182 Safari/537.36"),
 	)
 
 	ctx, cancel := chromedp.NewExecAllocator(context.Background(), opts...)
-	defer cancel()
-
 	ctx, cancel = chromedp.NewContext(ctx)
-	defer cancel()
-
 	ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
@@ -415,7 +401,7 @@ func registerAccount() {
 		}()
 	})
 
-	//randomizer
+	// variable randomizer
 	genderRandomizer := rand.Intn(100)
 	var genderPath string
 	if genderRandomizer >= 50 {
@@ -424,14 +410,11 @@ func registerAccount() {
 		genderPath = `/html/body/div[2]/div[3]/div[5]/form/div[7]/ul/li[2]/span`
 	}
 
-	//ctx = context.WithTimeout(1 * time.Minute)
-
-	// navigate to a page, wait for some time and then exit.
+	// registers nike account up to phone number verification
 	err = chromedp.Run(ctx,
 		fetch.Enable().WithHandleAuthRequests(true),
 		chromedp.Emulate(device.IPhone11Pro),
 		chromedp.Navigate(`https://www.nike.com/register`),
-		// wait for join button to be visible
 		chromedp.WaitVisible(`/html/body/div[2]/div[3]/div[5]/form/div[9]/input`),
 		chromedp.SendKeys(`/html/body/div[2]/div[3]/div[5]/form/div[1]/input`, email),
 		chromedp.SendKeys(`/html/body/div[2]/div[3]/div[5]/form/div[2]/input`, password),
@@ -451,113 +434,119 @@ func registerAccount() {
 		log.Fatal(err)
 	}
 
-	// call api for number and code
-	if provider == 1 && err != context.DeadlineExceeded {
-		phoneNumber, phoneCode := orderSmsActivate()
+	if err != context.DeadlineExceeded {
+		ctx, cancel = context.WithTimeout(ctx, 99999*time.Minute)
+		defer cancel()
 
-		err = chromedp.Run(ctx,
-			chromedp.SendKeys(`/html/body/div[1]/div[1]/div/div[1]/div/div[10]/form/div[1]/div[1]/div[1]/select`, config.Providers.SmsActivate.Country),
-			chromedp.SendKeys(`/html/body/div[1]/div[1]/div/div[1]/div/div[10]/form/div[1]/div[1]/div[1]/input`, phoneNumber),
-			chromedp.Click(`/html/body/div[1]/div[1]/div/div[1]/div/div[10]/form/div[1]/div[1]/input`), // Send Code
-		)
+		// call api for number and code
+		if provider == 1 {
+			phoneNumber, phoneCode := orderSmsActivate()
 
-		for attemptCount := 1; attemptCount <= 9; attemptCount++ {
-			if strings.Contains(phoneCode, "FULL_SMS") {
-				phoneCode = strings.TrimPrefix(phoneCode, "FULL_SMS:Your Nike verification code is: ")
-				fmt.Println("Code found:", phoneCode)
-				err = chromedp.Run(ctx,
-					chromedp.SendKeys(`/html/body/div[1]/div[1]/div/div[1]/div/div[10]/form/div[1]/div[2]/input`, phoneCode),
-					chromedp.Click(`/html/body/div[1]/div[1]/div/div[1]/div/div[10]/form/div[2]`),
-					chromedp.Click(`/html/body/div[1]/div[1]/div/div[1]/div/div[10]/form/div[3]/input`),
-				)
+			err = chromedp.Run(ctx,
+				chromedp.SendKeys(`/html/body/div[1]/div[1]/div/div[1]/div/div[10]/form/div[1]/div[1]/div[1]/select`, config.Providers.SmsActivate.Country),
+				chromedp.SendKeys(`/html/body/div[1]/div[1]/div/div[1]/div/div[10]/form/div[1]/div[1]/div[1]/input`, phoneNumber),
+				chromedp.Click(`/html/body/div[1]/div[1]/div/div[1]/div/div[10]/form/div[1]/div[1]/input`), // Send Code
+			)
 
-				// mark number as success
-				confirmSmsActivate(smsActivateID)
+			for attemptCount := 1; attemptCount <= 9; attemptCount++ {
+				if strings.Contains(phoneCode, "FULL_SMS") {
+					phoneCode = strings.TrimPrefix(phoneCode, "FULL_SMS:Your Nike verification code is: ")
+					fmt.Println("Code found:", phoneCode)
+					err = chromedp.Run(ctx,
+						chromedp.SendKeys(`/html/body/div[1]/div[1]/div/div[1]/div/div[10]/form/div[1]/div[2]/input`, phoneCode),
+						chromedp.Click(`/html/body/div[1]/div[1]/div/div[1]/div/div[10]/form/div[2]`),
+						chromedp.Click(`/html/body/div[1]/div[1]/div/div[1]/div/div[10]/form/div[3]/input`),
+					)
 
-				// write account to file
-				f, err := os.OpenFile("accounts.txt",
-					os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-				if err != nil {
-					log.Println(err)
+					// mark number as success
+					confirmSmsActivate(smsActivateID)
+
+					// write account to file
+					f, err := os.OpenFile("accounts.txt",
+						os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+					if err != nil {
+						log.Println(err)
+					}
+					defer f.Close()
+					if _, err := f.WriteString(email + ":" + password + "\n"); err != nil {
+						log.Println(err)
+					}
+
+					// sends webhook
+					successHook(email, password)
+
+					fmt.Println("Successfully registered Nike account!")
+					break
+
+				} else if attemptCount <= 8 && phoneCode == "STATUS_WAIT_CODE" {
+					fmt.Println("Waiting 15 seconds. Attempt:", attemptCount)
+					err = chromedp.Run(ctx, chromedp.Sleep(15*time.Second))
+					phoneCode = getSmsActivate(smsActivateID)
+
+				} else if attemptCount == 9 && phoneCode == "STATUS_WAIT_CODE" {
+					cancelSmsActivate(smsActivateID)
+					fmt.Println("SMS attempt limit reached. Phone number cancelled.")
+
+				} else if phoneCode == "STATUS_CANCEL" {
+					fmt.Println("Activation cancelled.")
 				}
-				defer f.Close()
-				if _, err := f.WriteString(email + ":" + password + "\n"); err != nil {
-					log.Println(err)
-				}
-
-				// sends webhook
-				successHook(email, password)
-
-				fmt.Println("Successfully registered Nike account!")
-				break
-
-			} else if attemptCount <= 8 && phoneCode == "STATUS_WAIT_CODE" {
-				fmt.Println("Waiting 15 seconds. Attempt:", attemptCount)
-				err = chromedp.Run(ctx, chromedp.Sleep(15*time.Second))
-				phoneCode = getSmsActivate(smsActivateID)
-
-			} else if attemptCount == 9 && phoneCode == "STATUS_WAIT_CODE" {
-				cancelSmsActivate(smsActivateID)
-				fmt.Println("SMS attempt limit reached. Phone number cancelled.")
-
-			} else if phoneCode == "STATUS_CANCEL" {
-				fmt.Println("Activation cancelled.")
 			}
-		}
-	} else if provider == 2 && err != context.DeadlineExceeded {
-		phoneNumber := orderRob()
-		phoneCode := codeRob()
+		} else if provider == 2 {
+			phoneNumber := orderRob()
+			phoneCode := codeRob()
 
-		err = chromedp.Run(ctx,
-			chromedp.SendKeys(`/html/body/div[1]/div[1]/div/div[1]/div/div[10]/form/div[1]/div[1]/div[1]/select`, config.Providers.SmsDiscount.Country),
-			chromedp.SendKeys(`/html/body/div[1]/div[1]/div/div[1]/div/div[10]/form/div[1]/div[1]/div[1]/input`, phoneNumber),
-			chromedp.Click(`/html/body/div[1]/div[1]/div/div[1]/div/div[10]/form/div[1]/div[1]/input`), // Send Code
-		)
+			err = chromedp.Run(ctx,
+				chromedp.SendKeys(`/html/body/div[1]/div[1]/div/div[1]/div/div[10]/form/div[1]/div[1]/div[1]/select`, config.Providers.SmsDiscount.Country),
+				chromedp.SendKeys(`/html/body/div[1]/div[1]/div/div[1]/div/div[10]/form/div[1]/div[1]/div[1]/input`, phoneNumber),
+				chromedp.Click(`/html/body/div[1]/div[1]/div/div[1]/div/div[10]/form/div[1]/div[1]/input`), // Send Code
+			)
 
-		for attemptCount := 1; attemptCount <= 9; attemptCount++ {
-			if codeRob() != "" {
-				phoneCode = strings.TrimPrefix(phoneCode, "Your Nike verification code is: ")
-				fmt.Println("Code found:", phoneCode)
-				err = chromedp.Run(ctx,
-					chromedp.SendKeys(`/html/body/div[1]/div[1]/div/div[1]/div/div[10]/form/div[1]/div[2]/input`, phoneCode),
-					chromedp.Click(`/html/body/div[1]/div[1]/div/div[1]/div/div[10]/form/div[2]`),
-					chromedp.Click(`/html/body/div[1]/div[1]/div/div[1]/div/div[10]/form/div[3]/input`),
-				)
+			for attemptCount := 1; attemptCount <= 9; attemptCount++ {
+				if codeRob() != "" {
+					phoneCode = strings.TrimPrefix(phoneCode, "Your Nike verification code is: ")
+					fmt.Println("Code found:", phoneCode)
+					err = chromedp.Run(ctx,
+						chromedp.SendKeys(`/html/body/div[1]/div[1]/div/div[1]/div/div[10]/form/div[1]/div[2]/input`, phoneCode),
+						chromedp.Click(`/html/body/div[1]/div[1]/div/div[1]/div/div[10]/form/div[2]`),
+						chromedp.Click(`/html/body/div[1]/div[1]/div/div[1]/div/div[10]/form/div[3]/input`),
+					)
 
-				// sends number to archive
-				archiveRob()
+					// sends number to archive
+					archiveRob()
 
-				// write account to file
-				f, err := os.OpenFile("accounts.txt",
-					os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-				if err != nil {
-					log.Println(err)
+					// write account to file
+					f, err := os.OpenFile("accounts.txt",
+						os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+					if err != nil {
+						log.Println(err)
+					}
+					defer f.Close()
+					if _, err := f.WriteString(email + ":" + password + "\n"); err != nil {
+						log.Println(err)
+					}
+
+					// sends webhook
+					successHook(email, password)
+
+					fmt.Println("Successfully registered Nike account!")
+					break
+
+				} else if attemptCount <= 8 && phoneCode == "" {
+					fmt.Println("Waiting 15 seconds. Attempt:", attemptCount)
+					err = chromedp.Run(ctx, chromedp.Sleep(15*time.Second))
+					phoneCode = codeRob()
+
+				} else if attemptCount == 9 && phoneCode == "" {
+					archiveRob()
+					fmt.Println("SMS attempt limit reached. Phone number cancelled.")
+
+				} else if phoneCode == "No numbers available" {
+					fmt.Println("No numbers available")
 				}
-				defer f.Close()
-				if _, err := f.WriteString(email + ":" + password + "\n"); err != nil {
-					log.Println(err)
-				}
-
-				// sends webhook
-				successHook(email, password)
-
-				fmt.Println("Successfully registered Nike account!")
-				break
-
-			} else if attemptCount <= 8 && phoneCode == "" {
-				fmt.Println("Waiting 15 seconds. Attempt:", attemptCount)
-				err = chromedp.Run(ctx, chromedp.Sleep(15*time.Second))
-				phoneCode = codeRob()
-
-			} else if attemptCount == 9 && phoneCode == "" {
-				archiveRob()
-				fmt.Println("SMS attempt limit reached. Phone number cancelled.")
-
-			} else if phoneCode == "No numbers available" {
-				fmt.Println("No numbers available")
 			}
 		}
 	}
+	cancel()
 }
 
 func richPresence() {
@@ -585,6 +574,7 @@ func richPresence() {
 func main() {
 	startUp()
 	richPresence()
+
 	var numberOfAccounts int
 
 	fmt.Println("How many accounts would you like to create?")
