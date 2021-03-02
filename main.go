@@ -369,7 +369,7 @@ func registerAccount() {
 
 	ctx, cancel := chromedp.NewExecAllocator(context.Background(), opts...)
 	ctx, cancel = chromedp.NewContext(ctx)
-	ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
+	ctx, cancel = context.WithTimeout(ctx, 150*time.Second)
 	defer cancel()
 
 	chromedp.ListenTarget(ctx, func(ev interface{}) {
@@ -423,6 +423,7 @@ func registerAccount() {
 		chromedp.SendKeys(`/html/body/div[2]/div[3]/div[5]/form/div[5]/input`, month+"/"+date+"/"+year),
 		chromedp.Click(genderPath),
 		chromedp.Click(`/html/body/div[2]/div[3]/div[5]/form/div[9]/input`),
+		// chromedp.WaitNotVisible(`/html/body/div[1]/div[3]/header/div/div[1]/div[1]/a/svg`),
 		chromedp.Sleep(5*time.Second),
 		chromedp.Navigate(`https://www.nike.com/member/settings`),
 		chromedp.Click(`/html/body/div[3]/div/div[3]/div[1]/div[1]/div/div[2]/div/span`),
@@ -430,13 +431,9 @@ func registerAccount() {
 		chromedp.Click(`/html/body/div[3]/div/div[3]/div[2]/div/div/form/div[2]/div[4]/div/div/div/div[2]/button`),       // Add
 		chromedp.WaitVisible(`/html/body/div[1]/div[1]/div/div[1]/div/div[10]/form/div[1]/div[1]/div[1]/input`),          // Mobile Number
 	)
-	if err != nil && err != context.Canceled && err != context.DeadlineExceeded {
-		log.Fatal(err)
-	}
-
-	if err != context.DeadlineExceeded {
-		ctx, cancel = context.WithTimeout(ctx, 99999*time.Minute)
-		defer cancel()
+	if err != nil {
+		cancel()
+	} else {
 
 		// call api for number and code
 		if provider == 1 {
@@ -545,8 +542,8 @@ func registerAccount() {
 				}
 			}
 		}
+		cancel()
 	}
-	cancel()
 }
 
 func richPresence() {
