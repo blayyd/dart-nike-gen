@@ -1,3 +1,12 @@
-# dart-nike-gen
-Dart.IO Nike account generator
+# Dart IO Nike Gen
+Dart is a program designed to efficiently assist with entering Nike raffle product releases. Dart generates Nike Accounts using multi-threaded browser automation, allowing the tool to create accounts in mass which increases chances of winning product releases. 
+
+Note: I wrote this program when I first learned Golang in 2021, so the code is quite messy.
+
+## Features
+- Multi-threaded account generation
+- Ability to choose from multiple SMS services
+- Proxy support
+
+  
 ![1723754023145](https://github.com/user-attachments/assets/f19e6064-fdad-4f83-b74e-75bfa1d9e9e6)
