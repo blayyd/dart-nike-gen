@@ -1,15 +1,15 @@
 {
-  "catchall": "@ubisoftmail.com",
-  "webhook": "https://ptb.discord.com/api/webhooks/814941842067030050/f5PG0dlGYKTqcsw7r4-1iNevW48RTtbTgQh0td-QZL2V1FYVKP-DvNVEy_QutlXl2gpu",
+  "catchall": "aiosdjfiosdjf@gmail.com",
+  "webhook": "insert discord webhook",
   "providers": {
 	  "sms-activate": {
-      "api-key": "b90f0c822beA604Acdd707Ace1e01487",
+      "api-key": "APIKEY",
       "country-code": "6",
       "country-prefix": "62",
       "country": "Indonesia"
 	  },
     "sms-discount": {
-      "api-key": "sd-64863adbde41b29404839c7d9d6efe44",
+      "api-key": "APIKEY",
       "country-prefix": "+1",
       "country": "United States"
     }
